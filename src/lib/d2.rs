@@ -4,8 +4,8 @@ use derive_more::{Add, AddAssign, Sum};
 
 #[derive(Add, Sum, AddAssign)]
 pub struct Position {
-    pub x: i32,
-    pub z: i32,
+    x: i32,
+    z: i32,
 }
 
 impl Position {
