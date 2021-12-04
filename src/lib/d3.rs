@@ -1,8 +1,9 @@
-use std::{collections::HashSet, time::SystemTime};
+use std::{collections::HashSet, sync::Arc, thread};
 
 use super::read_input;
 use bitvec::prelude::*;
 use ndarray::{Array2, ArrayView1};
+use rayon::prelude::*;
 
 fn process_input() -> Array2<bool> {
     let input = read_input("d3");
@@ -29,13 +30,14 @@ pub fn run_part1() -> u32 {
 }
 
 pub fn run_part2() -> Result<u32, ()> {
-    let input: Array2<bool> = process_input();
     let gamma = calculate_gamma_p2;
-    let epsilon = |col: &ArrayView1<bool>, rows_to_skip: &HashSet<usize>| {
-        !calculate_gamma_p2(col, rows_to_skip)
-    };
-    let oxygen_rating = convert(get_rating(gamma, &input)?);
-    let co2_rating = convert(get_rating(epsilon, &input)?);
+    let epsilon = |col: &ArrayView1<bool>| !calculate_gamma_p2(col);
+    let oxygen_input: Arc<Array2<bool>> = Arc::new(process_input());
+    let co2_input = oxygen_input.clone();
+    let oxygen_rating = thread::spawn(move || convert(get_rating(gamma, &*oxygen_input).unwrap()));
+    let co2_rating = thread::spawn(move || convert(get_rating(epsilon, &*co2_input).unwrap()));
+    let oxygen_rating = oxygen_rating.join().unwrap();
+    let co2_rating = co2_rating.join().unwrap();
     Ok(oxygen_rating * co2_rating)
 }
 
@@ -45,19 +47,17 @@ fn convert(bits: BitVec) -> u32 {
 }
 
 fn calculate_gamma(input: &Array2<bool>) -> BitVec {
-    let stub: HashSet<usize> = HashSet::new();
     input
         .columns()
         .into_iter()
-        .map(|col| calculate_gamma_p2(&col, &stub))
+        .map(|col| calculate_gamma_p2(&col))
         .collect()
 }
 
-fn calculate_gamma_p2(column: &ArrayView1<bool>, rows_to_skip: &HashSet<usize>) -> bool {
+fn calculate_gamma_p2(column: &ArrayView1<bool>) -> bool {
     let count = column
         .into_iter()
         .enumerate()
-        .filter(|(row_idx, _)| !rows_to_skip.contains(row_idx))
         .fold((0, 0), |mut count, (_, &bit)| {
             if bit {
                 count.1 += 1;
@@ -70,27 +70,38 @@ fn calculate_gamma_p2(column: &ArrayView1<bool>, rows_to_skip: &HashSet<usize>) 
 }
 
 fn get_rating(
-    criteria: fn(input: &ArrayView1<bool>, rows_to_skip: &HashSet<usize>) -> bool,
+    criteria: fn(input: &ArrayView1<bool>) -> bool,
     input: &Array2<bool>,
 ) -> Result<BitVec, ()> {
-    let rows: HashSet<usize> =
-        HashSet::from_iter(input.rows().into_iter().enumerate().map(|(i, _)| i));
-    let mut rows_to_delete: HashSet<usize> = HashSet::new();
-    for col in input.columns().into_iter() {
-        let criterion = criteria(&col, &rows_to_delete);
-        let to_delete: Vec<usize> = col
-            .into_iter()
-            .enumerate()
-            .filter(|(row_idx, &bit)| !rows_to_delete.contains(row_idx) && bit != criterion)
-            .map(|(row_idx, _)| row_idx)
-            .collect();
-
-        rows_to_delete.extend(to_delete.iter());
-
-        if (rows.len() - rows_to_delete.len()) == 1 {
-            let idx = *rows.difference(&rows_to_delete).into_iter().next().unwrap();
-            return Ok(input.row(idx).into_iter().collect());
-        }
+    let mut rows: HashSet<usize> = HashSet::from_iter(0..input.rows().into_iter().len());
+    let mut vec: Vec<(usize, HashSet<usize>)> = input
+        .columns()
+        .into_iter()
+        .enumerate()
+        .par_bridge()
+        .map(|(idx, col)| {
+            let criterion = criteria(&col);
+            (
+                idx,
+                col.into_iter()
+                    .enumerate()
+                    .filter(|(_, &bit)| bit != criterion)
+                    .map(|(row_idx, _)| row_idx)
+                    .collect(),
+            )
+        })
+        .collect();
+    vec.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut i = 0;
+    while rows.len() > 1 {
+        rows = rows.difference(&vec[i].1).copied().collect();
+        i += 1;
     }
-    Err(())
+
+    if rows.is_empty() {
+        return Err(());
+    }
+
+    let idx = rows.into_iter().next().unwrap();
+    Ok(input.row(idx).into_iter().collect())
 }
