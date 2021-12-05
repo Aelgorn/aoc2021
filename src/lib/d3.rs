@@ -7,9 +7,6 @@ use rayon::prelude::*;
 
 fn process_input() -> Array2<bool> {
     let input = read_input("d3");
-    process_input_str(input)
-}
-fn process_input_str(input: String) -> Array2<bool> {
     let lines: Vec<&str> = input.lines().collect();
     let first = lines[0];
     let n_cols = first.len();
