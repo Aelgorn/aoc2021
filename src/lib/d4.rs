@@ -39,8 +39,9 @@ pub fn run_part2() -> u32 {
     unmarked_sum * last.0
 }
 
-/// ((row.index, col.index), is_marked)
+/// (row.index, col.index)
 type NumberIndex = (usize, usize);
+/// ((row.index, col.index), is_marked)
 type MarkedInfo = (NumberIndex, bool);
 #[derive(Debug)]
 struct Board {
