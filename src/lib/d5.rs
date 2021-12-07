@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash, iter};
 
-use derive_more::{Add, AddAssign, Sub, Sum};
+use derive_more::{Add, Sub};
 use regex::Regex;
 
 use crate::read_input;
@@ -85,7 +85,7 @@ impl Line {
     }
 }
 
-#[derive(Debug, Copy, Clone, Add, Sum, AddAssign, Sub, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Copy, Clone, Add, Sub, Hash, PartialEq, Eq)]
 pub struct Coords {
     x: i32,
     y: i32,
