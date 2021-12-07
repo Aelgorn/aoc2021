@@ -20,29 +20,23 @@ fn process_input() -> Vec<Line> {
 
 fn run(part1: bool) -> usize {
     let input = process_input();
-    let map = input
+    input
         .into_iter()
         .flat_map(|line| line.get_all_coords(part1))
         .fold(HashMap::new(), |mut map, coords| {
             *map.entry(coords).or_insert(0) += 1usize;
             map
-        });
-    map.into_iter().filter(|&(_, count)| count >= 2).count()
+        })
+        .into_iter()
+        .filter(|&(_, count)| count >= 2)
+        .count()
 }
 
 pub fn run_part1() -> usize {
     run(true)
 }
 pub fn run_part2() -> usize {
-    let input = process_input();
-    let map = input
-        .into_iter()
-        .flat_map(|line| line.get_all_coords(false))
-        .fold(HashMap::new(), |mut map, coords| {
-            *map.entry(coords).or_insert(0) += 1usize;
-            map
-        });
-    map.into_iter().filter(|&(_, count)| count >= 2).count()
+    run(false)
 }
 
 #[derive(Debug, Copy, Clone)]
